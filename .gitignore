@@ -8,3 +8,5 @@ models
 results/
 data/audio/*.wav
 data/video/*.mp4
+venv/
+ffmpeg-git-20240629-amd64-static/

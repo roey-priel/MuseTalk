@@ -23,7 +23,7 @@ def load_all_model():
     pe = PositionalEncoding(d_model=384)
     return audio_processor,vae,unet,pe
 
-def get_file_type(video_path):
+def get_file_type(video_path: str):
     _, ext = os.path.splitext(video_path)
 
     if ext.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff']:

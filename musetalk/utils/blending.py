@@ -2,6 +2,7 @@ from PIL import Image
 import numpy as np
 import cv2
 from face_parsing import FaceParsing
+from musetalk.utils.timer import timeit
 
 fp = FaceParsing()
 
@@ -22,6 +23,7 @@ def face_seg(image):
     seg_image = seg_image.resize(image.size)
     return seg_image
 
+@timeit
 def get_image(image,face,face_box,upper_boundary_ratio = 0.5,expand=1.2):
     #print(image.shape)
     #print(face.shape)
@@ -58,6 +60,7 @@ def get_image(image,face,face_box,upper_boundary_ratio = 0.5,expand=1.2):
     body = np.array(body)
     return body[:,:,::-1]
 
+@timeit
 def get_image_prepare_material(image,face_box,upper_boundary_ratio = 0.5,expand=1.2):
     body = Image.fromarray(image[:,:,::-1])
 
@@ -84,6 +87,7 @@ def get_image_prepare_material(image,face_box,upper_boundary_ratio = 0.5,expand=
     mask_array = cv2.GaussianBlur(np.array(modified_mask_image), (blur_kernel_size, blur_kernel_size), 0)
     return mask_array,crop_box
 
+@timeit
 def get_image_blending(image,face,face_box,mask_array,crop_box):
     body = Image.fromarray(image[:,:,::-1])
     face = Image.fromarray(face[:,:,::-1])

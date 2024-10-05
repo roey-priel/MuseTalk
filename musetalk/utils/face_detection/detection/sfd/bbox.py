@@ -108,7 +108,7 @@ def decode(loc, priors, variances):
     boxes[:, 2:] += boxes[:, :2]
     return boxes
 
-def batch_decode(loc, priors, variances):
+def batch_decode(loc: torch.Tensor, priors: torch.Tensor, variances: list[float]):
     """Decode locations from predictions using priors to undo
     the encoding we did for offset regression at train time.
     Args:
@@ -120,10 +120,11 @@ def batch_decode(loc, priors, variances):
     Return:
         decoded bounding box predictions
     """
+    # print(loc.device, priors.device)
 
     boxes = torch.cat((
         priors[:, :, :2] + loc[:, :, :2] * variances[0] * priors[:, :, 2:],
-        priors[:, :, 2:] * torch.exp(loc[:, :, 2:] * variances[1])), 2)
+        priors[:, :, 2:] * torch.exp(loc[:, :, 2:].to(torch.float32) * variances[1])), 2)
     boxes[:, :, :2] -= boxes[:, :, 2:] / 2
     boxes[:, :, 2:] += boxes[:, :, :2]
     return boxes

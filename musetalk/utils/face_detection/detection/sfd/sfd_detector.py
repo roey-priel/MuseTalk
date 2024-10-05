@@ -8,6 +8,8 @@ from .net_s3fd import s3fd
 from .bbox import *
 from .detect import *
 
+from musetalk.utils.timer import timeit
+
 models_urls = {
     's3fd': 'https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth',
 }
@@ -28,7 +30,8 @@ class SFDDetector(FaceDetector):
         self.face_detector.to(device)
         self.face_detector.eval()
 
-    def detect_from_image(self, tensor_or_path):
+    @timeit
+    def detect_from_image(self, tensor_or_path) -> list[np.ndarray]:
         image = self.tensor_or_path_to_ndarray(tensor_or_path)
 
         bboxlist = detect(self.face_detector, image, device=self.device)
@@ -38,8 +41,9 @@ class SFDDetector(FaceDetector):
 
         return bboxlist
 
+    @timeit
     def detect_from_batch(self, images):
-        bboxlists = batch_detect(self.face_detector, images, device=self.device)
+        bboxlists = batch_detect(self.face_detector, images, device='cuda:0')
         keeps = [nms(bboxlists[:, i, :], 0.3) for i in range(bboxlists.shape[1])]
         bboxlists = [bboxlists[keep, i, :] for i, keep in enumerate(keeps)]
         bboxlists = [[x for x in bboxlist if x[-1] > 0.5] for bboxlist in bboxlists]

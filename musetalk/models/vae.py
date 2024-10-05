@@ -47,7 +47,8 @@ class VAE():
         mask_tensor[mask_tensor< 0.5] = 0
         mask_tensor[mask_tensor>= 0.5] = 1
         return mask_tensor
-            
+
+    @torch.cuda.amp.autocast()
     def preprocess_img(self,img_name,half_mask=False):
         """
         Preprocess an image for the VAE.
@@ -88,7 +89,7 @@ class VAE():
         :param image: The image tensor to encode.
         :return: The encoded latent variables.
         """
-        with torch.no_grad():
+        with torch.no_grad(), torch.cuda.amp.autocast():
             init_latent_dist = self.vae.encode(image.to(self.vae.dtype)).latent_dist
         init_latents = self.scaling_factor * init_latent_dist.sample()
         return init_latents

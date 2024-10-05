@@ -13,6 +13,9 @@ except BaseException:
 from .models import FAN, ResNetDepth
 from .utils import *
 
+from musetalk.utils.face_detection.detection.sfd import FaceDetector
+from musetalk.utils.face_detection.detection.mediapipe.mdp_detector import MDPDetector
+from musetalk.utils.timer import timeit
 
 class LandmarksType(Enum):
     """Enum class defining the type of landmarks to detect.
@@ -63,14 +66,18 @@ class FaceAlignment:
 
 
         # Get the face detector
-        face_detector_module = __import__('face_detection.detection.' + face_detector,
-                                          globals(), locals(), [face_detector], 0)
-        
-        self.face_detector = face_detector_module.FaceDetector(device=device, verbose=verbose)
+        # face_detector_module = __import__('face_detection.detection.' + face_detector,
+        #                                   globals(), locals(), [face_detector], 0)
 
+        self.face_detector = FaceDetector(device=device, verbose=verbose)
+        self.mdp_detector = MDPDetector(device=device)
+
+    @timeit
+    @torch.no_grad()
     def get_detections_for_batch(self, images):
         images = images[..., ::-1]
-        detected_faces = self.face_detector.detect_from_batch(images.copy())
+        # detected_faces = self.face_detector.detect_from_batch(images.copy())
+        detected_faces = self.mdp_detector.detect_from_batch(images.copy())
         results = []
 
         for i, d in enumerate(detected_faces):
@@ -103,6 +110,7 @@ class YOLOv8_face:
         self.feats_hw = [(math.ceil(self.input_height / self.strides[i]), math.ceil(self.input_width / self.strides[i])) for i in range(len(self.strides))]
         self.anchors = self.make_anchors(self.feats_hw)
 
+    @timeit
     def make_anchors(self, feats_hw, grid_cell_offset=0.5):
         """Generate anchors from features."""
         anchor_points = {}
@@ -142,6 +150,7 @@ class YOLOv8_face:
             img = cv2.resize(srcimg, (self.input_width, self.input_height), interpolation=cv2.INTER_AREA)
         return img, newh, neww, top, left
 
+    @timeit
     def detect(self, srcimg):
         input_img, newh, neww, padh, padw = self.resize_image(cv2.cvtColor(srcimg, cv2.COLOR_BGR2RGB))
         scale_h, scale_w = srcimg.shape[0]/newh, srcimg.shape[1]/neww
@@ -158,6 +167,7 @@ class YOLOv8_face:
         det_bboxes, det_conf, det_classid, landmarks = self.post_process(outputs, scale_h, scale_w, padh, padw)
         return det_bboxes, det_conf, det_classid, landmarks
 
+    @timeit
     def post_process(self, preds, scale_h, scale_w, padh, padw):
         bboxes, scores, landmarks = [], [], []
         for i, pred in enumerate(preds):

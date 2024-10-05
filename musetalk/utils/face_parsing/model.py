@@ -10,6 +10,7 @@ import torchvision
 from .resnet import Resnet18
 # from modules.bn import InPlaceABNSync as BatchNorm2d
 
+from musetalk.utils.timer import timeit
 
 class ConvBNReLU(nn.Module):
     def __init__(self, in_chan, out_chan, ks=3, stride=1, padding=1, *args, **kwargs):
@@ -23,6 +24,7 @@ class ConvBNReLU(nn.Module):
         self.bn = nn.BatchNorm2d(out_chan)
         self.init_weight()
 
+    @timeit
     def forward(self, x):
         x = self.conv(x)
         x = F.relu(self.bn(x))
@@ -41,6 +43,7 @@ class BiSeNetOutput(nn.Module):
         self.conv_out = nn.Conv2d(mid_chan, n_classes, kernel_size=1, bias=False)
         self.init_weight()
 
+    @timeit
     def forward(self, x):
         x = self.conv(x)
         x = self.conv_out(x)

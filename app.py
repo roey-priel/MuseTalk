@@ -6,6 +6,7 @@ import re
 import gradio as gr
 import spaces
 import numpy as np
+import cProfile
 import sys
 import subprocess
 
@@ -28,7 +29,7 @@ import gdown
 import imageio
 import ffmpeg
 from moviepy.editor import *
-
+from musetalk.utils.timer import timeit, close_file
 
 ProjectDir = os.path.abspath(os.path.dirname(__file__))
 CheckpointsDir = os.path.join(ProjectDir, "models")
@@ -128,8 +129,11 @@ from musetalk.utils.utils import load_all_model
 
 @spaces.GPU(duration=600)
 @torch.no_grad()
-def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=True)):
-    args_dict={"result_dir":'./results/output', "fps":25, "batch_size":8, "output_vid_name":'', "use_saved_coord":False}#same with inferenece script
+@timeit
+def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=True), batch_size=24):
+    print(f"start inference function")
+    start = time.time()
+    args_dict={"result_dir":'./results/output', "fps":25, "batch_size":batch_size, "output_vid_name":'', "use_saved_coord":False}#same with inferenece script
     args = Namespace(**args_dict)
 
     input_basename = os.path.basename(video_path).split('.')[0]
@@ -146,25 +150,37 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
     ############################################## extract frames from source video ##############################################
     if get_file_type(video_path)=="video":
         save_dir_full = os.path.join(args.result_dir, input_basename)
-        os.makedirs(save_dir_full,exist_ok = True)
-        # cmd = f"ffmpeg -v fatal -i {video_path} -start_number 0 {save_dir_full}/%08d.png"
-        # os.system(cmd)
-        # 读取视频
-        reader = imageio.get_reader(video_path)
+        # os.makedirs(save_dir_full,exist_ok = True)
+        # # cmd = f"ffmpeg -v fatal -i {video_path} -start_number 0 {save_dir_full}/%08d.png"
+        # # os.system(cmd)
+        # # 读取视频
+        # reader = imageio.get_reader(video_path)
+        
 
-        # 保存图片
-        for i, im in enumerate(reader):
-            imageio.imwrite(f"{save_dir_full}/{i:08d}.png", im)
-        input_img_list = sorted(glob.glob(os.path.join(save_dir_full, '*.[jpJP][pnPN]*[gG]')))
-        fps = get_video_fps(video_path)
+        # # 保存图片
+        # for i, im in enumerate(reader):
+        #     imageio.imwrite(f"{save_dir_full}/{i:08d}.png", im)
+        # input_img_list = sorted(glob.glob(os.path.join(save_dir_full, '*.[jpJP][pnPN]*[gG]')))
+        cap = cv2.VideoCapture(video_path)
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        frame_list = []
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frame_list.append(frame)
+        cap.release()
     else: # input img folder
         input_img_list = glob.glob(os.path.join(video_path, '*.[jpJP][pnPN]*[gG]'))
         input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
         fps = args.fps
     #print(input_img_list)
+    print(f'loading images took {time.time() - start} seconds')
     ############################################## extract audio feature ##############################################
     whisper_feature = audio_processor.audio2feat(audio_path)
+    print(f"audio2feat took {time.time() - start} seconds")
     whisper_chunks = audio_processor.feature2chunks(feature_array=whisper_feature,fps=fps)
+    print(f"feature2chunks took {time.time() - start} seconds")
     ############################################## preprocess input image  ##############################################
     if os.path.exists(crop_coord_save_path) and args.use_saved_coord:
         print("using extracted coordinates")
@@ -173,11 +189,11 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
         frame_list = read_imgs(input_img_list)
     else:
         print("extracting landmarks...time consuming")
-        coord_list, frame_list = get_landmark_and_bbox(input_img_list, bbox_shift)
+        coord_list, bbox_shift_text = get_landmark_and_bbox(frame_list, bbox_shift)
         with open(crop_coord_save_path, 'wb') as f:
             pickle.dump(coord_list, f)
-    bbox_shift_text=get_bbox_range(input_img_list, bbox_shift)
-    i = 0
+    # bbox_shift_text=get_bbox_range(frame_list, bbox_shift)
+    # i = 0
     input_latent_list = []
     for bbox, frame in zip(coord_list, frame_list):
         if bbox == coord_placeholder:
@@ -310,6 +326,7 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
     os.remove("temp.mp4")
     #shutil.rmtree(result_img_save_path)
     print(f"result is save to {output_vid_name}")
+    print(f"cost {time.time() - start} seconds")
     return output_vid_name,bbox_shift_text
 
 
@@ -416,11 +433,27 @@ with gr.Blocks(css=css) as demo:
         outputs=[out1,bbox_shift_scale]
     )
 
-# Set the IP and port
-ip_address = "0.0.0.0"  # Replace with your desired IP address
-port_number = 7860  # Replace with your desired port number
+# # Set the IP and port
+# ip_address = "https://cbda-150-136-91-135.ngrok-free.app"  # Replace with your desired IP address
+# port_number = 8080  # Replace with your desired port number
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ip", type=str, default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8080)
+    args = parser.parse_args()
+    ip_address = args.ip
+    port_number = args.port
+    
+    # ec2_ip = requests.get('http://169.254.169.254/latest/meta-data/public-ipv4').text
 
-demo.queue().launch(
-    share=False , debug=True, server_name=ip_address, server_port=port_number
-)
+    demo.queue().launch(
+        share=False, 
+        debug=True, 
+        server_name=ip_address, 
+        server_port=port_number,
+    )
+
+if __name__ == "__main__":
+    cProfile.run('main()', 'profile.prof')
+    close_file()

@@ -3,6 +3,7 @@ from face_detection import FaceAlignment,LandmarksType
 from os import listdir, path
 import subprocess
 import numpy as np
+import multiprocessing as mp
 import cv2
 import pickle
 import os
@@ -12,11 +13,18 @@ from mmpose.structures import merge_data_samples
 import torch
 from tqdm import tqdm
 
+from musetalk.utils.timer import timeit
+
 # initialize the mmpose model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config_file = './musetalk/utils/dwpose/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py'
-checkpoint_file = './models/dwpose/dw-ll_ucoco_384.pth'
-model = init_model(config_file, checkpoint_file, device=device)
+
+try:
+    checkpoint_file = 'models/dwpose/dw-ll_ucoco_384.pth'
+    model = init_model(config_file, checkpoint_file, device=device)
+except Exception as e:
+    checkpoint_file = '/workspace/models/dwpose/dw-ll_ucoco_384.pth'
+    model = init_model(config_file, checkpoint_file, device=device)
 
 # initialize the face detection model
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -32,7 +40,7 @@ def resize_landmark(landmark, w, h, new_w, new_h):
     landmark_resized = landmark_norm * [new_w, new_h]
     return landmark_resized
 
-def read_imgs(img_list):
+def read_imgs(img_list: list[str]) -> list[np.ndarray]:
     frames = []
     print('reading images...')
     for img_path in tqdm(img_list):
@@ -40,9 +48,10 @@ def read_imgs(img_list):
         frames.append(frame)
     return frames
 
-def get_bbox_range(img_list,upperbondrange =0):
-    frames = read_imgs(img_list)
-    batch_size_fa = 1
+@timeit
+def get_bbox_range(frames: list[np.ndarray],upperbondrange =0):
+    # frames = read_imgs(img_list)
+    batch_size_fa = 20
     batches = [frames[i:i + batch_size_fa] for i in range(0, len(frames), batch_size_fa)]
     coords_list = []
     landmarks = []
@@ -81,12 +90,11 @@ def get_bbox_range(img_list,upperbondrange =0):
     return text_range
     
 
-def get_landmark_and_bbox(img_list,upperbondrange =0):
-    frames = read_imgs(img_list)
-    batch_size_fa = 1
+def get_landmark_and_bbox(frames: list[np.ndarray], upperbondrange: int = 0):
+    batch_size_fa = 20
     batches = [frames[i:i + batch_size_fa] for i in range(0, len(frames), batch_size_fa)]
     coords_list = []
-    landmarks = []
+    # landmarks = []
     if upperbondrange != 0:
         print('get key_landmark and face bounding boxes with the bbox_shift:',upperbondrange)
     else:
@@ -129,12 +137,12 @@ def get_landmark_and_bbox(img_list,upperbondrange =0):
                 print("error bbox:",f)
             else:
                 coords_list += [f_landmark]
-    
     print("********************************************bbox_shift parameter adjustment**********************************************************")
     print(f"Total frame:「{len(frames)}」 Manually adjust range : [ -{int(sum(average_range_minus) / len(average_range_minus))}~{int(sum(average_range_plus) / len(average_range_plus))} ] , the current value: {upperbondrange}")
     print("*************************************************************************************************************************************")
-    return coords_list,frames
-    
+    text_range=f"Total frame:「{len(frames)}」 Manually adjust range : [ -{int(sum(average_range_minus) / len(average_range_minus))}~{int(sum(average_range_plus) / len(average_range_plus))} ] , the current value: {upperbondrange}"
+    return coords_list, text_range
+
 
 if __name__ == "__main__":
     img_list = ["./results/lyria/00000.png","./results/lyria/00001.png","./results/lyria/00002.png","./results/lyria/00003.png"]

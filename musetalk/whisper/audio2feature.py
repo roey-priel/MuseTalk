@@ -4,7 +4,24 @@ import soundfile as sf
 import numpy as np
 import time
 import sys
+import torch
 sys.path.append("..")
+
+def timeit(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+
+        # Get the class name if the function is a method
+        if args and hasattr(args[0].__class__, func.__name__):
+            class_name = args[0].__class__.__name__
+            print(f"{class_name}.{func.__name__} took {end_time - start_time:.4f} seconds")
+        else:
+            print(f"{func.__name__} took {end_time - start_time:.4f} seconds")
+
+        return result
+    return wrapper
 
 class Audio2Feature():
     def __init__(self, 
@@ -13,6 +30,7 @@ class Audio2Feature():
         self.whisper_model_type = whisper_model_type
         self.model = load_model(model_path) #
 
+    # @timeit
     def get_sliced_feature(self,
                            feature_array, 
                            vid_idx, 
@@ -44,6 +62,7 @@ class Audio2Feature():
         selected_feature = selected_feature.reshape(-1, 384)# 50*384
         return selected_feature,selected_idx
 
+    @timeit
     def get_sliced_feature_sparse(self,feature_array, vid_idx, audio_feat_length= [2,2],fps = 25):
         """
         Get sliced features based on a given index
@@ -78,6 +97,8 @@ class Audio2Feature():
         return selected_feature,selected_idx
     
 
+    @torch.cuda.amp.autocast()
+    @timeit
     def feature2chunks(self,feature_array,fps,audio_feat_length = [2,2]):
         whisper_chunks = []
         whisper_idx_multiplier = 50./fps 
@@ -85,7 +106,7 @@ class Audio2Feature():
         print(f"video in {fps} FPS, audio idx in 50FPS")
         while 1:
             start_idx = int(i * whisper_idx_multiplier)
-            selected_feature,selected_idx = self.get_sliced_feature(feature_array= feature_array,vid_idx = i,audio_feat_length=audio_feat_length,fps=fps)
+            selected_feature, selected_idx = self.get_sliced_feature(feature_array= feature_array,vid_idx = i,audio_feat_length=audio_feat_length,fps=fps)
             #print(f"i:{i},selected_idx {selected_idx}")
             whisper_chunks.append(selected_feature)
             i += 1
@@ -94,6 +115,8 @@ class Audio2Feature():
 
         return whisper_chunks
 
+    @timeit
+    @torch.cuda.amp.autocast()
     def audio2feat(self,audio_path):
         # get the sample rate of the audio
         result = self.model.transcribe(audio_path)

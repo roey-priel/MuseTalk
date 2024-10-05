@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+from musetalk.utils.timer import timeit
+
 
 def conv3x3(in_planes, out_planes, strd=1, padding=1, bias=False):
     "3x3 convolution with padding"
@@ -137,7 +139,7 @@ class HourGlass(nn.Module):
         up2 = F.interpolate(low3, scale_factor=2, mode='nearest')
 
         return up1 + up2
-
+    @timeit
     def forward(self, x):
         return self._forward(self.depth, x)
 
