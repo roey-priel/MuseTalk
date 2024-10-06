@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from musetalk.utils.timer import timeit
+
 
 class L2Norm(nn.Module):
     def __init__(self, n_channels, scale=1.0):
@@ -13,6 +15,7 @@ class L2Norm(nn.Module):
         self.weight.data *= 0.0
         self.weight.data += self.scale
 
+    @timeit
     def forward(self, x):
         norm = x.pow(2).sum(dim=1, keepdim=True).sqrt() + self.eps
         x = x / norm * self.weight.view(1, -1, 1, 1)

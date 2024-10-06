@@ -20,7 +20,7 @@ RUN pip3 install --upgrade pip setuptools
 
 WORKDIR /workspace
 
-COPY . .
+COPY Makefile requirements.txt ./
 
 RUN make install
 RUN make ffmpeg-install
@@ -30,3 +30,4 @@ EXPOSE 8080
 
 CMD ["python3", "app.py"]
 
+COPY . .

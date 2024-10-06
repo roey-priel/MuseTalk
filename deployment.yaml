@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: musetalk-gpu
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: musetalk-gpu
+  template:
+    metadata:
+      labels:
+        app: musetalk-gpu
+    spec:
+      containers:
+      - name: musetalk
+        image: rpazpri1/musetalk:latest
+        command: ["python3"]
+        args: ["app.py"]
+        # resources:
+        #   limits:
+        #     nvidia.com/gpu: 1  # Request 1 GPU
+      #   volumeMounts:
+      #   - name: models
+      #     mountPath: /workspace/models
+      # volumes:
+      # - name: models
+      #   hostPath:
+      #     path: /home/ubuntu/github/roey-musetalk/models
+      #     type: Directory

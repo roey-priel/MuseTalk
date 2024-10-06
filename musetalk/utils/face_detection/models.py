@@ -32,6 +32,7 @@ class ConvBlock(nn.Module):
         else:
             self.downsample = None
 
+    @timeit
     def forward(self, x):
         residual = x
 
@@ -74,6 +75,7 @@ class Bottleneck(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
+    @timeit
     def forward(self, x):
         residual = x
 
@@ -173,6 +175,7 @@ class FAN(nn.Module):
                 self.add_module('al' + str(hg_module), nn.Conv2d(68,
                                                                  256, kernel_size=1, stride=1, padding=0))
 
+    @timeit
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)), True)
         x = F.avg_pool2d(self.conv2(x), 2, stride=2)
@@ -245,6 +248,7 @@ class ResNetDepth(nn.Module):
 
         return nn.Sequential(*layers)
 
+    @timeit
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)

@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from PIL import Image
 import os
-
+from musetalk.utils.timer import timeit
 class VAE():
     """
     VAE (Variational Autoencoder) class for image processing.
@@ -21,7 +21,7 @@ class VAE():
         :param use_float16: Whether to use float16 precision.
         """
         self.model_path = model_path
-        self.vae = AutoencoderKL.from_pretrained(self.model_path)
+        self.vae: AutoencoderKL = AutoencoderKL.from_pretrained(self.model_path)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.vae.to(self.device)
@@ -48,6 +48,7 @@ class VAE():
         mask_tensor[mask_tensor>= 0.5] = 1
         return mask_tensor
 
+    @timeit
     @torch.cuda.amp.autocast()
     def preprocess_img(self,img_name,half_mask=False):
         """
@@ -82,6 +83,7 @@ class VAE():
 
         return x
 
+    @timeit
     def encode_latents(self,image):
         """
         Encode an image into latent variables.
@@ -94,6 +96,7 @@ class VAE():
         init_latents = self.scaling_factor * init_latent_dist.sample()
         return init_latents
     
+    @timeit
     def decode_latents(self, latents):
         """
         Decode latent variables back into an image.
@@ -107,7 +110,8 @@ class VAE():
         image = (image * 255).round().astype("uint8")
         image = image[...,::-1] # RGB to BGR
         return image
-    
+
+    @timeit
     def get_latents_for_unet(self,img):
         """
         Prepare latent variables for a U-Net model.

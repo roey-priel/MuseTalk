@@ -76,6 +76,7 @@ class AttentionRefinementModule(nn.Module):
         self.sigmoid_atten = nn.Sigmoid()
         self.init_weight()
 
+    @timeit
     def forward(self, x):
         feat = self.conv(x)
         atten = F.avg_pool2d(feat, feat.size()[2:])
@@ -104,6 +105,7 @@ class ContextPath(nn.Module):
 
         self.init_weight()
 
+    @timeit
     def forward(self, x):
         H0, W0 = x.size()[2:]
         feat8, feat16, feat32 = self.resnet(x)
@@ -155,6 +157,7 @@ class SpatialPath(nn.Module):
         self.conv_out = ConvBNReLU(64, 128, ks=1, stride=1, padding=0)
         self.init_weight()
 
+    @timeit
     def forward(self, x):
         feat = self.conv1(x)
         feat = self.conv2(feat)
@@ -200,6 +203,7 @@ class FeatureFusionModule(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.init_weight()
 
+    @timeit
     def forward(self, fsp, fcp):
         fcat = torch.cat([fsp, fcp], dim=1)
         feat = self.convblk(fcat)
@@ -241,6 +245,7 @@ class BiSeNet(nn.Module):
         self.conv_out32 = BiSeNetOutput(128, 64, n_classes)
         self.init_weight()
 
+    @timeit
     def forward(self, x):
         H, W = x.size()[2:]
         feat_res8, feat_cp8, feat_cp16 = self.cp(x)  # here return res3b1 feature

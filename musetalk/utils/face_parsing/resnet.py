@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.model_zoo as modelzoo
 
+from musetalk.utils.timer import timeit
 # from modules.bn import InPlaceABNSync as BatchNorm2d
 
 resnet18_url = 'https://download.pytorch.org/models/resnet18-5c106cde.pth'
@@ -33,6 +34,7 @@ class BasicBlock(nn.Module):
                 nn.BatchNorm2d(out_chan),
                 )
 
+    @timeit
     def forward(self, x):
         residual = self.conv1(x)
         residual = F.relu(self.bn1(residual))
@@ -68,6 +70,7 @@ class Resnet18(nn.Module):
         self.layer4 = create_layer_basic(256, 512, bnum=2, stride=2)
         self.init_weight(model_path)
 
+    @timeit
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(self.bn1(x))

@@ -16,7 +16,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 
 # Create a face detector instance with the video mode:
 options = FaceDetectorOptions(
-    base_options=BaseOptions(model_asset_path='/home/ubuntu/github/MuseTalk/models/Blaze Face Detection.tflite'),
+    base_options=BaseOptions(model_asset_path='models/BlazeFaceDetection.tflite'),
     running_mode=VisionRunningMode.VIDEO
 )
 

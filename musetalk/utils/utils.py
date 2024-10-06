@@ -17,7 +17,7 @@ from musetalk.models.unet import UNet,PositionalEncoding
 
 def load_all_model():
     audio_processor = Audio2Feature(model_path="./models/whisper/tiny.pt")
-    vae = VAE(model_path = "./models/sd-vae-ft-mse/")
+    vae = VAE(model_path = "./models/sd-vae-ft-mse/", use_float16=True)
     unet = UNet(unet_config="./models/musetalk/musetalk.json",
                 model_path ="./models/musetalk/pytorch_model.bin")
     pe = PositionalEncoding(d_model=384)

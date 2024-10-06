@@ -195,7 +195,7 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
     # bbox_shift_text=get_bbox_range(frame_list, bbox_shift)
     # i = 0
     input_latent_list = []
-    for bbox, frame in zip(coord_list, frame_list):
+    for bbox, frame in tqdm(zip(coord_list, frame_list), desc="Extracting latent features", total=len(coord_list)):
         if bbox == coord_placeholder:
             continue
         x1, y1, x2, y2 = bbox
@@ -214,7 +214,7 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
     batch_size = args.batch_size
     gen = datagen(whisper_chunks,input_latent_list_cycle,batch_size)
     res_frame_list = []
-    for i, (whisper_batch,latent_batch) in enumerate(tqdm(gen,total=int(np.ceil(float(video_num)/batch_size)))):
+    for i, (whisper_batch,latent_batch) in enumerate(tqdm(gen,total=int(np.ceil(float(video_num)/batch_size)), desc="Decoding latents")):
         
         tensor_list = [torch.FloatTensor(arr) for arr in whisper_batch]
         audio_feature_batch = torch.stack(tensor_list).to(unet.device) # torch, B, 5*N,384
@@ -224,65 +224,72 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
         recon = vae.decode_latents(pred_latents)
         for res_frame in recon:
             res_frame_list.append(res_frame)
-            
+
     ############################################## pad to full image ##############################################
-    print("pad talking image to original video")
-    for i, res_frame in enumerate(tqdm(res_frame_list)):
+    # print("pad talking image to original video")
+    temp_video = './temp.mp4'
+    out = cv2.VideoWriter(temp_video, cv2.VideoWriter_fourcc(*'mp4v'), fps, (1280, 720))
+    for i, res_frame in enumerate(tqdm(res_frame_list, desc="Padding talking image to original video")):
         bbox = coord_list_cycle[i%(len(coord_list_cycle))]
         ori_frame = copy.deepcopy(frame_list_cycle[i%(len(frame_list_cycle))])
         x1, y1, x2, y2 = bbox
         try:
             res_frame = cv2.resize(res_frame.astype(np.uint8),(x2-x1,y2-y1))
-        except:
-    #                 print(bbox)
+        except Exception as e:
+            print(e)
             continue
         
         combine_frame = get_image(ori_frame,res_frame,bbox)
-        cv2.imwrite(f"{result_img_save_path}/{str(i).zfill(8)}.png",combine_frame)
-        
+        # print('shape', combine_frame.shape)
+        out.write(combine_frame)
+        # cv2.imwrite(f"{result_img_save_path}/{str(i).zfill(8)}.png",combine_frame)
+    out.release()
     # cmd_img2video = f"ffmpeg -y -v fatal -r {fps} -f image2 -i {result_img_save_path}/%08d.png -vcodec libx264 -vf format=rgb24,scale=out_color_matrix=bt709,format=yuv420p temp.mp4"
     # print(cmd_img2video)
     # os.system(cmd_img2video)
     # 帧率
-    fps = 25
+    # fps = 25
     # 图片路径
     # 输出视频路径
-    output_video = 'temp.mp4'
+    # output_video = 'temp.mp4'
 
     # 读取图片
-    def is_valid_image(file):
-        pattern = re.compile(r'\d{8}\.png')
-        return pattern.match(file)
+    # def is_valid_image(file):
+    #     pattern = re.compile(r'\d{8}\.png')
+    #     return pattern.match(file)
 
-    images = []
-    files = [file for file in os.listdir(result_img_save_path) if is_valid_image(file)]
-    files.sort(key=lambda x: int(x.split('.')[0]))
+    # images = []
+    # files = [file for file in os.listdir(result_img_save_path) if is_valid_image(file)]
+    # files.sort(key=lambda x: int(x.split('.')[0]))
 
-    for file in files:
-        filename = os.path.join(result_img_save_path, file)
-        images.append(imageio.imread(filename))
+    # for file in files:
+    #     filename = os.path.join(result_img_save_path, file)
+    #     images.append(imageio.imread(filename))
         
 
     # 保存视频
-    imageio.mimwrite(output_video, images, 'FFMPEG', fps=fps, codec='libx264', pixelformat='yuv420p')
+    # imageio.mimwrite(output_video, images, 'FFMPEG', fps=fps, codec='libx264', pixelformat='yuv420p')
 
     # cmd_combine_audio = f"ffmpeg -y -v fatal -i {audio_path} -i temp.mp4 {output_vid_name}"
     # print(cmd_combine_audio)
     # os.system(cmd_combine_audio)
 
-    input_video = './temp.mp4'
+
     # Check if the input_video and audio_path exist
-    if not os.path.exists(input_video):
-        raise FileNotFoundError(f"Input video file not found: {input_video}")
+    if not os.path.exists(temp_video):
+        raise FileNotFoundError(f"Input video file not found: {temp_video}")
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
-    
+
     # 读取视频
-    reader = imageio.get_reader(input_video)
-    fps = reader.get_meta_data()['fps']  # 获取原视频的帧率
+    # combine with ffmpeg
+    os.system(f"ffmpeg -y -i {temp_video} -i {audio_path} -c:v copy -map 0:v:0 -map 1:a:0 -shortest {output_vid_name}")
+
+    # reader = imageio.get_reader(input_video)
+    # fps = reader.get_meta_data()['fps']  # 获取原视频的帧率
 
     # 将帧存储在列表中
-    frames = images
+    # frames = images
 
     # 保存视频并添加音频
     # imageio.mimwrite(output_vid_name, frames, 'FFMPEG', fps=fps, codec='libx264', audio_codec='aac', input_params=['-i', audio_path])
@@ -291,7 +298,7 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
     
     # input_audio = ffmpeg.input(audio_path)
     
-    print(len(frames))
+    # print(len(frames))
 
     # imageio.mimwrite(
     #     output_video,
@@ -312,16 +319,16 @@ def inference(audio_path,video_path,bbox_shift,progress=gr.Progress(track_tqdm=T
 
 
     # Load the video
-    video_clip = VideoFileClip(input_video)
+    # video_clip = VideoFileClip(input_video)
 
-    # Load the audio
-    audio_clip = AudioFileClip(audio_path)
+    # # Load the audio
+    # audio_clip = AudioFileClip(audio_path)
 
-    # Set the audio to the video
-    video_clip = video_clip.set_audio(audio_clip)
+    # # Set the audio to the video
+    # video_clip = video_clip.set_audio(audio_clip)
 
-    # Write the output video
-    video_clip.write_videofile(output_vid_name, codec='libx264', audio_codec='aac',fps=25)
+    # # Write the output video
+    # video_clip.write_videofile(output_vid_name, codec='libx264', audio_codec='aac',fps=25)
 
     os.remove("temp.mp4")
     #shutil.rmtree(result_img_save_path)

@@ -13,7 +13,7 @@ ffmpeg-install:
 	@export FFMPEG_PATH=./ffmpeg-git-20240629-amd64-static/
 
 docker-build:
-	@docker build -t musetalk .
+	@docker build -t rpazpri1/musetalk:latest .
 
 docker-run:
-	@docker run -p 8080:8080 -v /home/ubuntu/github/MuseTalk/models:/workspace/models musetalk python3 app.py
+	@docker run --gpus all -p 8080:8080 -v /home/ubuntu/github/MuseTalk/models:/workspace/models rpazpri1/musetalk:latest python3 app.py
