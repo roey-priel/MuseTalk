@@ -4,14 +4,15 @@ import torch
 from torch.utils.model_zoo import load_url
 from enum import Enum
 import numpy as np
+import math
 import cv2
 try:
     import urllib.request as request_file
 except BaseException:
     import urllib as request_file
 
-from .models import FAN, ResNetDepth
-from .utils import *
+# from .models import FAN, ResNetDepth
+# from .utils import *
 
 from musetalk.utils.face_detection.detection.sfd import FaceDetector
 from musetalk.utils.face_detection.detection.mediapipe.mdp_detector import MDPDetector
@@ -69,15 +70,15 @@ class FaceAlignment:
         # face_detector_module = __import__('face_detection.detection.' + face_detector,
         #                                   globals(), locals(), [face_detector], 0)
 
-        self.face_detector = FaceDetector(device=device, verbose=verbose)
-        self.mdp_detector = MDPDetector(device=device)
+        # self.face_detector = FaceDetector(device=device, verbose=verbose)
+        self.face_detector = MDPDetector(device=device)
 
     @timeit
     @torch.no_grad()
     def get_detections_for_batch(self, images):
         images = images[..., ::-1]
         # detected_faces = self.face_detector.detect_from_batch(images.copy())
-        detected_faces = self.mdp_detector.detect_from_batch(images.copy())
+        detected_faces = self.face_detector.detect_from_batch(images.copy())
         results = []
 
         for i, d in enumerate(detected_faces):

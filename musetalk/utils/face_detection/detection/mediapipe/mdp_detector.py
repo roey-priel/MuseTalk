@@ -1,11 +1,13 @@
 import os
-import cv2
-from torch.utils.model_zoo import load_url
-import torch
+# import cv2
+# from torch.utils.model_zoo import load_url
+# import torch
 import mediapipe as mp
 import numpy as np
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+# from mediapipe.tasks import python
+# from mediapipe.tasks.python import vision
+import sys
+sys.path.append('.')
 from musetalk.utils.face_detection.detection.core import FaceDetector as BaseFaceDetector
 
 
@@ -15,6 +17,9 @@ FaceDetectorOptions = mp.tasks.vision.FaceDetectorOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
 
 # Create a face detector instance with the video mode:
+if not os.path.isfile('models/BlazeFaceDetection.tflite'):
+    raise FileNotFoundError('models/BlazeFaceDetection.tflite doesnt exist!')
+
 options = FaceDetectorOptions(
     base_options=BaseOptions(model_asset_path='models/BlazeFaceDetection.tflite'),
     running_mode=VisionRunningMode.VIDEO
@@ -26,30 +31,31 @@ models_urls = {
     's3fd': 'https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth',
 }
 
-from ..sfd.net_s3fd import s3fd
-from ..sfd.bbox import *
-from ..sfd.detect import *
+# from ..sfd.net_s3fd import s3fd
+# from ..sfd.bbox import *
+# from ..sfd.detect import *
 
 class MDPDetector(BaseFaceDetector):
     def __init__(self, device):
         super(MDPDetector, self).__init__(device, True)
         self.detector = FaceDetector.create_from_options(options)
         self.timestamp_ms = 0
-        path_to_detector=os.path.join(os.path.dirname(os.path.abspath(__file__)), 's3fd.pth')
+        # path_to_detector=os.path.join(os.path.dirname(os.path.abspath(__file__)), 's3fd.pth')
 
-        # Initialise the face detector
-        if not os.path.isfile(path_to_detector):
-            model_weights = load_url(models_urls['s3fd'])
-        else:
-            model_weights = torch.load(path_to_detector)
+        # # Initialise the face detector
+        # if not os.path.isfile(path_to_detector):
+        #     model_weights = load_url(models_urls['s3fd'])
+        # else:
+        #     model_weights = torch.load(path_to_detector)
 
-        self.face_detector = s3fd()
-        self.face_detector.load_state_dict(model_weights)
-        self.face_detector.to(device)
-        self.face_detector.eval()
+        # self.face_detector = s3fd()
+        # self.face_detector.load_state_dict(model_weights)
+        # self.face_detector.to(device)
+        # self.face_detector.eval()
 
     @timeit
     def detect_from_image(self, tensor_or_path):
+        return
         image = self.tensor_or_path_to_ndarray(tensor_or_path)
 
         bboxlist = detect(self.face_detector, image, device=self.device)

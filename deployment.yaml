@@ -22,9 +22,9 @@ spec:
         #     nvidia.com/gpu: 1  # Request 1 GPU
       #   volumeMounts:
       #   - name: models
-      #     mountPath: /workspace/models
+      #     mountPath: /workspace/models/
       # volumes:
       # - name: models
       #   hostPath:
-      #     path: /home/ubuntu/github/roey-musetalk/models
+      #     path: /home/ubuntu/github/roey-musetalk/models/
       #     type: Directory
